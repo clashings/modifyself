@@ -1,0 +1,97 @@
+"""
+Command invocation context.
+"""
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..models.message import Message
+    from ..models.user import User
+    from ..models.member import Member
+    from ..models.channel import Channel
+    from ..models.guild import Guild
+    from .core import Command
+
+
+class Context:
+    """
+    The context of a command invocation.
+
+    Bridges the command framework with Discord. Provides shortcuts
+    for common actions like sending messages and accessing the
+    current guild/channel/author.
+    """
+
+    __slots__ = ("message", "command", "args", "kwargs", "bot", "_cs_guild", "_cs_channel")
+
+    def __init__(self, *, message: "Message", command: "Command", args: list, kwargs: dict, bot):
+        self.message = message
+        self.command = command
+        self.args = args
+        self.kwargs = kwargs
+        self.bot = bot
+        self._cs_guild = None
+        self._cs_channel = None
+
+    def __repr__(self) -> str:
+        return f"<Context command={self.command.name} message={self.message.id}>"
+
+    @property
+    def author(self) -> "User | Member":
+        return self.message.author
+
+    @property
+    def channel(self) -> "Channel | None":
+        if self._cs_channel is None:
+            self._cs_channel = self.message.channel
+        return self._cs_channel
+
+    @property
+    def guild(self) -> "Guild | None":
+        if self._cs_guild is None:
+            self._cs_guild = self.message.guild
+        return self._cs_guild
+
+    @property
+    def me(self) -> "Member | User | None":
+        if self.guild:
+            return self.guild.me
+        return self.bot.user
+
+    @property
+    def prefix(self) -> str:
+        return getattr(self.bot, "command_prefix", "!")
+
+    @property
+    def invoked_with(self) -> str:
+        return self.command.name
+
+    @property
+    def clean_content(self) -> str:
+        return self.message.clean_content
+
+    async def send(self, content: str | None = None, **kwargs):
+        """Send a message to the current channel."""
+        if self.channel:
+            return await self.channel.send(content, **kwargs)
+        raise RuntimeError("Cannot send: no channel available")
+
+    async def reply(self, content: str | None = None, **kwargs):
+        """Reply to the message that invoked this command."""
+        return await self.message.reply(content, **kwargs)
+
+    async def trigger_typing(self):
+        """Trigger typing in the current channel."""
+        if self.channel:
+            await self.channel.typing()
+
+    async def fetch_message(self, message_id: int):
+        """Fetch a message from the current channel."""
+        if self.channel:
+            data = await self.bot._state.http.get_messages(
+                self.channel.id, limit=1, before=message_id + 1
+            )
+            if data:
+                from ..models.message import Message
+                return Message(state=self.bot._state, data=data[0])
+        return None
