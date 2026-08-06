@@ -1,4 +1,4 @@
-[build-system]
+﻿[build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
@@ -7,7 +7,7 @@ name = "modifyself"
 version = "0.1.0"
 description = "A clean, pythonic Discord self-bot library"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "modifyself", email = "modifyself@example.com"}
 ]
@@ -20,7 +20,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/modifyself/modifyself"
-Bug Reports = "https://github.com/modifyself/modifyself/issues"
+Bug-Reports = "https://github.com/modifyself/modifyself/issues"
 Source = "https://github.com/modifyself/modifyself"
 
 [tool.setuptools.packages.find]
