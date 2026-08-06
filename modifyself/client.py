@@ -244,7 +244,7 @@ class Client:
         
         # Send notification when bot is ready
         if self._notifications:
-            username = user.username if user else "Unknown"
+            username = user.name if user else "Unknown"
             send_notification(
                 title="✅ Bot is Running",
                 message=f"Logged in as {username}",

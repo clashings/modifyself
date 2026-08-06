@@ -4,6 +4,7 @@ Pure utility functions. No Discord-specific state here.
 
 import re
 import os
+import sys
 import tempfile
 from datetime import datetime, timezone
 from typing import Optional
@@ -112,12 +113,38 @@ def send_notification(
             try:
                 response = requests.get(image_url, timeout=10, stream=True)
                 if response.status_code == 200:
+                    # Always use .ico extension for Windows
+                    is_windows = sys.platform.startswith('win')
+                    suffix = '.ico' if is_windows else '.png'
+                    
                     # Create temp file with correct extension
-                    ext = '.jpg' if 'jpg' in image_url or 'jpeg' in image_url else '.png'
-                    icon_temp = tempfile.NamedTemporaryFile(suffix=ext, delete=False)
+                    icon_temp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
                     icon_temp.write(response.content)
-                    icon_temp.close()
+                    icon_temp.close()  # CRITICAL: Close the file before using it
                     icon_path = icon_temp.name
+                    
+                    # On Windows, ensure it's a valid ICO
+                    if is_windows:
+                        try:
+                            # Open the file to verify it's an image
+                            with Image.open(icon_path) as img:
+                                # If it's not already ICO, convert it
+                                if img.format != 'ICO':
+                                    ico_path = icon_path.replace('.ico', '_converted.ico')
+                                    # Save as ICO with common sizes
+                                    img.save(ico_path, format='ICO', sizes=[(32, 32), (48, 48), (64, 64)])
+                                    # Close the image
+                                    img.close()
+                                    # Delete original
+                                    try:
+                                        os.unlink(icon_path)
+                                    except:
+                                        pass
+                                    icon_path = ico_path
+                        except Exception as e:
+                            print(f"[modifyself] ICO conversion warning: {e}")
+                            # Keep the original if conversion fails
+                            pass
                 else:
                     print(f"[modifyself] Could not download notification image (status {response.status_code})")
             except Exception as e:
@@ -145,7 +172,6 @@ def send_notification(
         print(f"[modifyself] Failed to send notification: {e}")
         return False
 
-
-# Default notification images
-START_IMAGE = "https://i.pinimg.com/736x/67/a6/e0/67a6e041a28c7c3a2d038b8fb16352c0.jpg"
-ERROR_IMAGE = "https://i.pinimg.com/736x/67/a6/e0/67a6e041a28c7c3a2d038b8fb16352c0.jpg"
+# Default notification images - using GitHub raw URL
+START_IMAGE = None
+ERROR_IMAGE = None
