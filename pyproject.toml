@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modifyself"
-version = "0.1.1"
+version = "0.1.2"
 description = "A clean, pythonic Discord self-bot library"
 readme = "README.md"
 license = "MIT"
@@ -19,9 +19,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/modifyself/modifyself"
-Bug-Reports = "https://github.com/modifyself/modifyself/issues"
-Source = "https://github.com/modifyself/modifyself"
+Homepage = "https://github.com/clashings/modifyself"
+Bug-Reports = "https://github.com/clashings/modifyself/issues"
+Source = "https://github.com/clashings/modifyself"
 
 [tool.setuptools.packages.find]
 include = ["modifyself*"]
