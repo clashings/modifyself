@@ -1,4 +1,4 @@
-"""
+﻿"""
 Main client class for modifyself.
 """
 
@@ -20,6 +20,7 @@ from .commands.cog import Cog
 from .errors import CommandError, ConversionError, CommandNotFound
 from .models.message import Message
 from .headers import HeaderSpoofer, EMULATION
+from .utils import send_notification, START_IMAGE, ERROR_IMAGE
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +50,12 @@ class Client:
         command_prefix: Union[str, Callable[["Client", Message], str]] = "!",
         owner_ids: Optional[List[int]] = None,
         proxy: Optional[str] = None,
+        notifications: bool = True,
     ):
         self.token = token
         self.command_prefix = command_prefix
         self.owner_ids = set(owner_ids) if owner_ids else set()
+        self._notifications = notifications
 
         # Internal components
         self._headers = HeaderSpoofer(token, EMULATION)
@@ -82,10 +85,20 @@ class Client:
         self._closed = False
         self._task: Optional[asyncio.Task] = None
         self._close_task: Optional[asyncio.Task] = None
+        self._error_handled = False
 
         # Auto-register built-in event parsers
         self._dispatcher.on("READY", self._on_ready_internal)
         self._dispatcher.on("MESSAGE_CREATE", self._on_message_create_internal)
+
+        # Send startup notification
+        if self._notifications:
+            send_notification(
+                title="🚀 modifyself Initialized",
+                message="Client created successfully. Starting connection...",
+                image_url=START_IMAGE,
+                timeout=3
+            )
 
     # ------------------------------------------------------------------
     # Properties
@@ -228,6 +241,16 @@ class Client:
         """Internal READY handler."""
         self._ready.set()
         logger.debug("Ready event received internally")
+        
+        # Send notification when bot is ready
+        if self._notifications:
+            username = user.username if user else "Unknown"
+            send_notification(
+                title="✅ Bot is Running",
+                message=f"Logged in as {username}",
+                image_url=START_IMAGE,
+                timeout=5
+            )
 
     async def _on_message_create_internal(self, message: Message):
         """Internal MESSAGE_CREATE handler for command processing."""
@@ -314,6 +337,7 @@ class Client:
             logger.info(f"Command {name} executed successfully")
         except CommandError as exc:
             logger.warning("Command error in %s: %s", command.name, exc)
+            self._handle_error(f"Command error in {command.name}: {exc}")
             for handler in self._event_handlers.get("COMMAND_ERROR", []):
                 try:
                     await handler(ctx, exc)
@@ -321,6 +345,7 @@ class Client:
                     logger.exception("Error in command error handler")
         except Exception as exc:
             logger.exception("Unexpected error in command %s", command.name)
+            self._handle_error(f"Unexpected error in {command.name}: {exc}")
             for handler in self._event_handlers.get("COMMAND_ERROR", []):
                 try:
                     await handler(ctx, exc)
@@ -328,15 +353,33 @@ class Client:
                     pass
 
     # ------------------------------------------------------------------
+    # Error handling
+    # ------------------------------------------------------------------
+    def _handle_error(self, error_message: str):
+        """Send a notification when an error occurs."""
+        if self._notifications and not self._error_handled:
+            self._error_handled = True
+            send_notification(
+                title="❌ Error Occurred",
+                message=error_message[:100] + ("..." if len(error_message) > 100 else ""),
+                image_url=ERROR_IMAGE,
+                timeout=10
+            )
+            # Reset after a moment so new errors can trigger notifications
+            asyncio.get_event_loop().call_later(2, lambda: setattr(self, '_error_handled', False))
+
+    # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
     async def start(self):
         """Start the client (connects to gateway)."""
         self._closed = False
+        self._error_handled = False
         try:
             await self._gateway.connect()
         except Exception as exc:
             logger.exception("Gateway connection error: %s", exc)
+            self._handle_error(f"Failed to connect: {exc}")
             raise
 
     async def close(self):
@@ -379,6 +422,10 @@ class Client:
         async def runner():
             try:
                 await self.start()
+            except Exception as exc:
+                # Catch any unhandled errors in the main loop
+                self._handle_error(f"Bot crashed: {exc}")
+                raise
             finally:
                 await self.close()
 
@@ -386,6 +433,10 @@ class Client:
             loop.run_until_complete(runner())
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received, shutting down...")
+        except Exception as exc:
+            # Any unhandled exception at the top level
+            self._handle_error(f"Bot crashed: {exc}")
+            raise
         finally:
             try:
                 loop.run_until_complete(loop.shutdown_asyncgens())
