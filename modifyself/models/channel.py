@@ -2,9 +2,10 @@
 Discord Channel models.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, List
 
 from .base import DiscordObject
+from .user import User
 from ..core.enums import ChannelType
 
 if TYPE_CHECKING:
@@ -84,7 +85,6 @@ class DMChannel(Channel):
 
     def _update(self, data: dict):
         super()._update(data)
-        from .user import User
         self.recipients = [
             User(state=self._state, data=u) for u in data.get("recipients", [])
         ]
@@ -98,6 +98,35 @@ class DMChannel(Channel):
 
     def __repr__(self) -> str:
         return f"<DMChannel id={self.id} recipient={self.recipient}>"
+
+
+class GroupChannel(Channel):
+    """Represents a group DM channel."""
+
+    __slots__ = ("name", "icon", "recipients", "owner_id", "application_id", "managed")
+
+    def __init__(self, *, state: "ConnectionState", data: dict):
+        super().__init__(state=state, data=data)
+
+    def _update(self, data: dict):
+        super()._update(data)
+        self.name = data.get("name")
+        self.icon = data.get("icon")
+        self.recipients = [
+            User(state=self._state, data=u) for u in data.get("recipients", [])
+        ]
+        self.owner_id = int(data["owner_id"]) if data.get("owner_id") else None
+        self.application_id = int(data["application_id"]) if data.get("application_id") else None
+        self.managed = data.get("managed", False)
+
+    @property
+    def icon_url(self) -> Optional[str]:
+        if self.icon:
+            return f"https://cdn.discordapp.com/channel-icons/{self.id}/{self.icon}.png"
+        return None
+
+    def __repr__(self) -> str:
+        return f"<GroupChannel id={self.id} name={self.name!r}>"
 
 
 class VoiceChannel(Channel):
@@ -142,6 +171,8 @@ def channel_factory(state: "ConnectionState", data: dict) -> Channel:
         return TextChannel(state=state, data=data)
     elif channel_type == ChannelType.DM:
         return DMChannel(state=state, data=data)
+    elif channel_type == ChannelType.GROUP_DM:
+        return GroupChannel(state=state, data=data)
     elif channel_type == ChannelType.GUILD_VOICE:
         return VoiceChannel(state=state, data=data)
     elif channel_type == ChannelType.GUILD_CATEGORY:

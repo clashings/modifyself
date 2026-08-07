@@ -1,6 +1,6 @@
 from .user import User
 from .guild import Guild
-from .channel import Channel, DMChannel, GroupChannel, channel_factory
+from .channel import Channel, TextChannel, DMChannel, GroupChannel, VoiceChannel, CategoryChannel, channel_factory
 from .message import Message
 from .member import Member
 from .base import DiscordObject
@@ -13,8 +13,11 @@ __all__ = [
     "User",
     "Guild",
     "Channel",
+    "TextChannel",
     "DMChannel",
     "GroupChannel",
+    "VoiceChannel",
+    "CategoryChannel",
     "channel_factory",
     "Message",
     "Member",
