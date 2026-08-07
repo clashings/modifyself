@@ -43,7 +43,7 @@ class Context:
     @property
     def channel(self) -> "Channel | None":
         if self._cs_channel is None:
-            self._cs_channel = self.message.channel
+            self._cs_channel = self.bot.get_channel(self.message.channel_id)
         return self._cs_channel
 
     @property
@@ -72,8 +72,9 @@ class Context:
 
     async def send(self, content: str | None = None, **kwargs):
         """Send a message to the current channel."""
-        if self.channel:
-            return await self.channel.send(content, **kwargs)
+        ch = self.channel
+        if ch:
+            return await ch.send(content, **kwargs)
         raise RuntimeError("Cannot send: no channel available")
 
     async def reply(self, content: str | None = None, **kwargs):
@@ -82,14 +83,16 @@ class Context:
 
     async def trigger_typing(self):
         """Trigger typing in the current channel."""
-        if self.channel:
-            await self.channel.typing()
+        ch = self.channel
+        if ch:
+            await ch.typing()
 
     async def fetch_message(self, message_id: int):
         """Fetch a message from the current channel."""
-        if self.channel:
+        ch = self.channel
+        if ch:
             data = await self.bot._state.http.get_messages(
-                self.channel.id, limit=1, before=message_id + 1
+                ch.id, limit=1, before=message_id + 1
             )
             if data:
                 from ..models.message import Message
