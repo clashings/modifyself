@@ -2,7 +2,7 @@
 modifyself — a clean, pythonic Discord self-bot library.
 \"\"\"
 
-__version__ = \"0.2.7\"
+__version__ = \"0.2.8\"
 
 from .client import Client
 from .commands.core import command

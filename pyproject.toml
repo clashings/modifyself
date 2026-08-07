@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modifyself"
-version = "0.2.7"
+version = "0.2.8"
 description = "A clean, pythonic Discord self-bot library"
 readme = "README.md"
 license = "MIT"
