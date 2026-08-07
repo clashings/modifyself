@@ -1,106 +1,162 @@
 """
-TypedDict mirrors of Discord's JSON payloads.
-Update this when Discord changes their API.
+Type definitions for modifyself.
 """
 
-from typing import TypedDict, NotRequired
+from typing import Any, Dict, List, Optional, Union, Callable, Coroutine, TypeVar, Generic
+from typing_extensions import Self
 
+# ============================================
+# Basic Types
+# ============================================
 
-class UserPayload(TypedDict):
-    id: str
-    username: str
-    discriminator: str
-    avatar: str | None
-    bot: NotRequired[bool]
-    system: NotRequired[bool]
-    public_flags: NotRequired[int]
+Snowflake = int
+Timestamp = str
+Color = int
 
+# ============================================
+# Command Types
+# ============================================
 
-class MemberPayload(TypedDict):
-    user: NotRequired[UserPayload]
-    nick: NotRequired[str | None]
-    roles: list[str]
-    joined_at: str
-    premium_since: NotRequired[str | None]
-    deaf: bool
-    mute: bool
-    pending: NotRequired[bool]
+CommandCallback = Callable[..., Coroutine[Any, Any, Any]]
+CommandName = str
+CommandAliases = List[str]
+CommandCooldown = int
 
+# ============================================
+# Event Types
+# ============================================
 
-class ChannelPayload(TypedDict):
-    id: str
-    type: int
-    guild_id: NotRequired[str]
-    name: NotRequired[str]
-    topic: NotRequired[str | None]
-    nsfw: NotRequired[bool]
-    last_message_id: NotRequired[str | None]
-    parent_id: NotRequired[str | None]
-    permission_overwrites: NotRequired[list[dict]]
-    position: NotRequired[int]
-    recipients: NotRequired[list[UserPayload]]
+EventHandler = Callable[..., Coroutine[Any, Any, Any]]
+EventName = str
 
+# ============================================
+# HTTP Types
+# ============================================
 
-class MessagePayload(TypedDict):
-    id: str
-    channel_id: str
-    author: UserPayload
-    content: str
-    timestamp: str
-    edited_timestamp: str | None
-    tts: bool
-    mention_everyone: bool
-    mentions: list[UserPayload]
-    mention_roles: list[str]
-    attachments: list[dict]
-    embeds: list[dict]
-    reactions: NotRequired[list[dict]]
-    pinned: bool
-    type: int
-    guild_id: NotRequired[str]
-    member: NotRequired[MemberPayload]
-    referenced_message: NotRequired["MessagePayload" | None]
+HTTPMethod = str
+HTTPHeaders = Dict[str, str]
+HTTPParams = Dict[str, Any]
+HTTPData = Union[Dict[str, Any], str, None]
 
+# ============================================
+# Gateway Types
+# ============================================
 
-class GuildPayload(TypedDict):
-    id: str
-    name: str
-    icon: str | None
-    splash: str | None
-    owner_id: str
-    region: NotRequired[str]
-    afk_channel_id: str | None
-    afk_timeout: int
-    verification_level: int
-    default_message_notifications: int
-    explicit_content_filter: int
-    roles: list[dict]
-    emojis: list[dict]
-    features: list[str]
-    mfa_level: int
-    system_channel_id: str | None
-    system_channel_flags: int
-    max_presences: NotRequired[int | None]
-    max_members: NotRequired[int]
-    vanity_url_code: str | None
-    description: str | None
-    banner: str | None
-    premium_tier: int
-    premium_subscription_count: NotRequired[int]
-    preferred_locale: str
-    public_updates_channel_id: str | None
-    max_video_channel_users: NotRequired[int]
-    approximate_member_count: NotRequired[int]
-    approximate_presence_count: NotRequired[int]
-    nsfw_level: int
-    members: NotRequired[list[MemberPayload]]
-    channels: NotRequired[list[ChannelPayload]]
+GatewayPayload = Dict[str, Any]
+GatewayOPCode = int
+GatewaySequence = int
 
+# ============================================
+# Model Types
+# ============================================
 
-class ReadyPayload(TypedDict):
-    v: int
-    user: UserPayload
-    guilds: list[dict]
-    session_id: str
-    shard: NotRequired[list[int]]
-    application: NotRequired[dict]
+T = TypeVar('T')
+
+class CachedObject(Generic[T]):
+    """Base class for cached objects."""
+    def __init__(self, data: T, state: Any) -> None:
+        self._data = data
+        self._state = state
+    
+    def _update(self, data: T) -> None:
+        """Update the object with new data."""
+        self._data = data
+
+# ============================================
+# Permission Types
+# ============================================
+
+PermissionValue = int
+PermissionOverwrite = Dict[str, Any]
+
+# ============================================
+# Channel Types (using Python 3.12 union syntax)
+# ============================================
+
+ChannelID = int
+GuildID = int
+UserID = int
+MessageID = int
+RoleID = int
+EmojiID = int
+
+# ============================================
+# Context Types
+# ============================================
+
+class ContextBase:
+    """Base context class."""
+    def __init__(self, **kwargs: Any) -> None:
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+# ============================================
+# Option Types (Python 3.12 union syntax)
+# ============================================
+
+OptionalStr = str | None
+OptionalInt = int | None
+OptionalList = list | None
+OptionalDict = dict | None
+
+# ============================================
+# Function Types
+# ============================================
+
+AsyncFunc = Callable[..., Coroutine[Any, Any, Any]]
+SyncFunc = Callable[..., Any]
+Predicate = Callable[[Any], bool]
+
+# ============================================
+# State Types
+# ============================================
+
+StateCache = Dict[Snowflake, Any]
+StateUpdate = Dict[str, Any]
+
+# ============================================
+# Error Types
+# ============================================
+
+ErrorCode = int
+ErrorMessage = str
+
+# ============================================
+# Rate Limit Types
+# ============================================
+
+RateLimitBucket = str
+RateLimitRemaining = int
+RateLimitReset = float
+
+# ============================================
+# WebSocket Types
+# ============================================
+
+WebSocketURL = str
+WebSocketEvent = Dict[str, Any]
+
+# ============================================
+# Notification Types (Python 3.12 union syntax)
+# ============================================
+
+NotificationTitle = str
+NotificationMessage = str
+NotificationImage = str | None  # Python 3.12 union syntax
+NotificationTimeout = int
+
+# ============================================
+# Client Types
+# ============================================
+
+ClientToken = str
+ClientPrefix = str | list[str] | Callable  # Python 3.12 union syntax
+ClientID = int
+
+# ============================================
+# JSON Types
+# ============================================
+
+JSONValue = str | int | float | bool | None | dict | list
+JSONObject = dict[str, JSONValue]
+JSONArray = list[JSONValue]
