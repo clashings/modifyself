@@ -1,5 +1,5 @@
-﻿"""
-modifyself — a clean, pythonic Discord self-bot library.
+"""
+modifyself ? a clean, pythonic Discord self-bot library.
 """
 
 __version__ = "0.1.4"
