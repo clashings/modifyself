@@ -42,14 +42,13 @@ class Message(DiscordObject):
         "application",
         "message_reference",
         "interaction",
-        "components",
         "sticker_items",
         "position",
         "role_subscription_data",
         "resolved",
         "poll",
         "call",
-        "author",
+        "_components",
     )
 
     def __init__(self, *, state: "ConnectionState", data: dict):
@@ -211,12 +210,6 @@ class Message(DiscordObject):
     async def unpin(self) -> None:
         """Unpin this message."""
         await self._state.http.unpin_message(self.channel_id, self.id)
-
-    async def get_reaction_users(self, emoji: str, limit: int = 100) -> List[User]:
-        """Get users who reacted with a specific emoji."""
-        # This would need to be implemented in the HTTP client
-        # For now, just return an empty list
-        return []
 
     def __repr__(self) -> str:
         return f"<Message id={self.id} content={self.content[:50]!r}>"
