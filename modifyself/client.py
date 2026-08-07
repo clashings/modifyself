@@ -26,7 +26,6 @@ from .models.webhook import Webhook, WebhookMessage
 from .headers import HeaderSpoofer, EMULATION
 from .utils import send_notification, START_IMAGE, ERROR_IMAGE
 from .interactions import Interaction, InteractionHandler, interaction_handler
-from .voice import VoiceManager, VoiceClient, VoiceState
 
 logger = logging.getLogger(__name__)
 
@@ -91,12 +90,9 @@ class Client:
 
         self._interaction_handlers: Dict[str, Callable] = {}
 
-        self._voice = VoiceManager(self)
-
         self._dispatcher.on("READY", self._on_ready_internal)
         self._dispatcher.on("MESSAGE_CREATE", self._on_message_create_internal)
         self._dispatcher.on("INTERACTION_CREATE", self._on_interaction_create)
-        self._dispatcher.on("VOICE_STATE_UPDATE", self._on_voice_state_update)
 
         if self._notifications:
             send_notification(
@@ -133,11 +129,6 @@ class Client:
     @property
     def cogs(self) -> List[Cog]:
         return list(self._cogs.values())
-
-    @property
-    def voice(self) -> VoiceManager:
-        """Access voice manager."""
-        return self._voice
 
     def event(self, coro: Callable):
         if not asyncio.iscoroutinefunction(coro):
@@ -214,7 +205,6 @@ class Client:
         return self._cogs.get(name)
 
     def interaction_handler(self, custom_id: str):
-        """Decorator to register an interaction handler."""
         def decorator(func: Callable):
             self._interaction_handlers[custom_id] = func
             return func
@@ -238,7 +228,6 @@ class Client:
         await self._process_commands(message)
 
     async def _on_interaction_create(self, data: dict):
-        """Handle interaction_create events."""
         try:
             interaction = Interaction(self._state, data)
             
@@ -248,15 +237,6 @@ class Client:
                 await interaction_handler.handle(interaction)
         except Exception as e:
             logger.exception(f"Error handling interaction: {e}")
-
-    async def _on_voice_state_update(self, data: dict):
-        """Handle voice state updates."""
-        guild_id = int(data.get("guild_id", 0))
-        if not guild_id:
-            return
-        
-        voice_state = data.get("voice_state", {})
-        self._voice.update_state(guild_id, voice_state)
 
     async def _process_commands(self, message: Message):
         if not self.user or message.author.id != self.user.id:
@@ -373,7 +353,6 @@ class Client:
         self._closed = True
         self._ready.clear()
         
-        await self._voice.disconnect_all()
         await self._gateway.close()
         await self._http.close()
         
@@ -421,9 +400,6 @@ class Client:
     async def wait_until_ready(self):
         await self._ready.wait()
 
-    # ============================================================
-    # FETCH METHODS
-    # ============================================================
     async def fetch_user(self, user_id: int):
         data = await self._http.request(Route.user(user_id))
         return self._state._add_user(data)
@@ -449,9 +425,6 @@ class Client:
     def get_user(self, user_id: int):
         return self._state._users.get(user_id)
 
-    # ============================================================
-    # RELATIONSHIPS
-    # ============================================================
     async def get_relationships(self) -> List[Relationship]:
         data = await self._http.request(Route("GET", "/users/@me/relationships"))
         return [Relationship(state=self._state, data=r) for r in data]
@@ -479,9 +452,6 @@ class Client:
             Route("DELETE", f"/users/@me/relationships/{user_id}")
         )
 
-    # ============================================================
-    # BILLING
-    # ============================================================
     async def get_payment_sources(self) -> List[PaymentSource]:
         data = await self._http.request(Route("GET", "/users/@me/billing/payment-sources"))
         return [PaymentSource(state=self._state, data=s) for s in data]
@@ -496,9 +466,6 @@ class Client:
     async def get_skus(self) -> List[Dict[str, Any]]:
         return await self._http.request(Route("GET", "/users/@me/entitlements/skus"))
 
-    # ============================================================
-    # SETTINGS
-    # ============================================================
     async def get_user_settings(self) -> UserSettings:
         data = await self._http.request(Route("GET", "/users/@me/settings"))
         return UserSettings(data)
@@ -533,9 +500,6 @@ class Client:
             json=kwargs
         )
 
-    # ============================================================
-    # PROFILE
-    # ============================================================
     async def get_profile(self, user_id: int = None) -> Dict[str, Any]:
         endpoint = f"/users/{user_id}/profile" if user_id else "/users/@me/profile"
         return await self._http.request(Route("GET", endpoint))
@@ -567,16 +531,11 @@ class Client:
     async def get_connections(self) -> List[Dict[str, Any]]:
         return await self._http.request(Route("GET", "/users/@me/connections"))
 
-    # ============================================================
-    # WEBHOOKS
-    # ============================================================
     async def get_webhook(self, webhook_id: int) -> Webhook:
-        """Get a webhook by ID."""
         data = await self._http.request(Route("GET", f"/webhooks/{webhook_id}"))
         return Webhook(state=self._state, data=data)
 
     async def get_webhook_with_token(self, webhook_id: int, token: str) -> Webhook:
-        """Get a webhook by ID and token."""
         data = await self._http.request(
             method="GET",
             url=f"/webhooks/{webhook_id}/{token}",
@@ -584,12 +543,10 @@ class Client:
         return Webhook(state=self._state, data=data)
 
     async def get_channel_webhooks(self, channel_id: int) -> List[Webhook]:
-        """Get all webhooks in a channel."""
         data = await self._http.request(Route("GET", f"/channels/{channel_id}/webhooks"))
         return [Webhook(state=self._state, data=w) for w in data]
 
     async def get_guild_webhooks(self, guild_id: int) -> List[Webhook]:
-        """Get all webhooks in a guild."""
         data = await self._http.request(Route("GET", f"/guilds/{guild_id}/webhooks"))
         return [Webhook(state=self._state, data=w) for w in data]
 
@@ -599,7 +556,6 @@ class Client:
         name: str,
         avatar: Optional[str] = None,
     ) -> Webhook:
-        """Create a webhook in a channel."""
         payload = {"name": name}
         if avatar:
             payload["avatar"] = avatar
@@ -608,31 +564,3 @@ class Client:
             json=payload,
         )
         return Webhook(state=self._state, data=data)
-
-    # ============================================================
-    # VOICE
-    # ============================================================
-    async def create_voice_client(
-        self,
-        channel_id: int,
-        guild_id: int,
-        endpoint: str,
-        token: str,
-        session_id: str,
-    ) -> VoiceClient:
-        """Create and connect a voice client."""
-        return await self._voice.connect(
-            channel_id,
-            guild_id,
-            endpoint,
-            token,
-            session_id,
-        )
-
-    def get_voice_client(self, guild_id: int) -> Optional[VoiceClient]:
-        """Get the voice client for a guild."""
-        return self._voice.get_client(guild_id)
-
-    async def disconnect_voice(self, guild_id: int) -> None:
-        """Disconnect voice client for a guild."""
-        await self._voice.disconnect(guild_id)

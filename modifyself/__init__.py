@@ -1,8 +1,8 @@
-﻿\"\"\"
-modifyself — a clean, pythonic Discord self-bot library.
-\"\"\"
+"""
+modifyself ? a clean, pythonic Discord self-bot library.
+"""
 
-__version__ = "0.2.9"
+__version__ = "0.3.1"
 
 from .client import Client
 from .commands.core import command
