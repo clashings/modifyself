@@ -43,7 +43,21 @@ class Context:
     @property
     def channel(self) -> "Channel | None":
         if self._cs_channel is None:
-            self._cs_channel = self.bot.get_channel(self.message.channel_id)
+            # Try to get channel from bot's state using channel_id
+            ch = self.bot._state._channels.get(self.message.channel_id)
+            if ch is None:
+                # Try to fetch it
+                import asyncio
+                try:
+                    # Create a new event loop if needed
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        # We're already in an async context, fetch directly
+                        data = asyncio.create_task(self.bot._http.fetch_channel(self.message.channel_id))
+                        # This won't work directly, we need to handle it differently
+                except:
+                    pass
+            self._cs_channel = ch
         return self._cs_channel
 
     @property
@@ -73,9 +87,13 @@ class Context:
     async def send(self, content: str | None = None, **kwargs):
         """Send a message to the current channel."""
         ch = self.channel
-        if ch:
-            return await ch.send(content, **kwargs)
-        raise RuntimeError("Cannot send: no channel available")
+        if ch is None:
+            # Fallback: use message.channel_id directly
+            try:
+                return await self.bot._http.send_message(self.message.channel_id, content, **kwargs)
+            except Exception as e:
+                raise RuntimeError(f"Cannot send: {e}")
+        return await ch.send(content, **kwargs)
 
     async def reply(self, content: str | None = None, **kwargs):
         """Reply to the message that invoked this command."""
